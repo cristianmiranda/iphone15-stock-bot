@@ -11,15 +11,12 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('IPHONE15_STOCK')
 
 
-def run(bot_token, recipients):
+def run(apple_url, bot_token, recipients):
     # bot_token = sys.argv[1]
     # recipients = json.loads(sys.argv[2])
 
-    # Define the URL
-    url = "https://www.apple.com/us/shop/fulfillment-messages?mts.0=regular&location=34744&parts.0=MU673LL/A&parts.2=MU6C3LL/A&parts.1=MU6D3LL/A&parts.3=MU683LL/A&parts.4=MU6G3LL/A&parts.5=MU6H3LL/A&pl=true&mts.1=compact"
-
     # Make a GET request to the URL
-    response = requests.get(url)
+    response = requests.get(apple_url)
 
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
@@ -79,8 +76,12 @@ def telegram_bot_sendtext(bot_message, bot_token, recipients):
 
 
 def handler(event, context):
+    apple_url = event['apple_url']
     bot_token = event['bot_token']
     recipients = event['recipients']
+
+    if apple_url:
+        print(f"Using Apple URL: {apple_url}")
 
     if bot_token:
         print(f"Bot token received!")
@@ -89,11 +90,11 @@ def handler(event, context):
         print(f"Recipients: {recipients}")
 
     print("#1 - Checking iPhone 15 availability")
-    run(bot_token=bot_token,recipients=recipients)
+    run(apple_url=apple_url, bot_token=bot_token, recipients=recipients)
 
     time.sleep(30)
 
     print("#2 - Checking iPhone 15 availability")
-    run(bot_token=bot_token,recipients=recipients)
+    run(apple_url=apple_url, bot_token=bot_token, recipients=recipients)
 
     return { 'status' : 200, 'body' : 'Lambda executed successfully!' }
