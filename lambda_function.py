@@ -36,6 +36,11 @@ def run(apple_url, bot_token, recipients):
                 availability = details['pickupDisplay']
                 model = details['messageTypes']['compact']['storePickupProductTitle']
 
+                model_parts = model.split(' ')
+                storage = model_parts[4].lower()  # Extracting "1TB"
+                color = '-'.join(model_parts[5:]).lower()  # Converting "Natural Titanium" to "natural-titanium"
+                buy_url = f"https://www.apple.com/shop/buy-iphone/iphone-15-pro/6.7-inch-display-{storage}-{color}-unlocked"
+
                 availability_icon = '🚫'
                 if availability == 'available':
                     availability_icon = '✅'
@@ -60,7 +65,7 @@ def run(apple_url, bot_token, recipients):
                         }
                     )
 
-                    message = f"📱 {model}\n🏰 {store_name} ({zipCode})\n📍 {store['storeDistanceWithUnit']}\n{availability_icon} {availability.upper()}"
+                    message = f"📱 {model}\n🏰 {store_name} ({zipCode})\n📍 {store['storeDistanceWithUnit']}\n\n{availability_icon} **{availability.upper()}**\n\n🛒 {buy_url}"
 
                     print(message)
                     telegram_bot_sendtext(message, bot_token, recipients)
