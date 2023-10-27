@@ -1,9 +1,15 @@
 #!/usr/bin/python3
 
+import boto3
 import requests
 import time
 
 from datetime import datetime
+
+# Initializing a DynamoDB resource
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('IPHONE15_STOCK')
+
 
 def run(bot_token, recipients):
     # bot_token = sys.argv[1]
@@ -22,16 +28,42 @@ def run(bot_token, recipients):
 
         # Iterate over each store in the JSON data
         for store in data['body']['content']['pickupMessage']['stores']:
+            store_name = store['storeName']
             zipCode = store['address']['postalCode']
+
+            print(f"-------------------------------------")
+            print(f"> {store_name} ({zipCode})")
+            print(f"")
 
             for part, details in store['partsAvailability'].items():
                 availability = details['pickupDisplay']
                 model = details['messageTypes']['compact']['storePickupProductTitle']
 
-                print(f"{model} @ {zipCode} is {availability}")
-
+                availability_icon = '🚫'
                 if availability == 'available':
-                    message = f"📱 {model}\n🏰 {store['storeName']} ({zipCode})\n📍 {store['storeDistanceWithUnit']}"
+                    availability_icon = '✅'
+
+                print(f"{availability_icon} {model} @ {zipCode} is {availability}")
+
+                model_store_key = f"{model}@{store_name}"
+
+                response = table.get_item(Key={'ID': model_store_key})
+                db_item = response.get('Item')
+                if db_item:
+                    db_availability = db_item.get('availability')
+                else:
+                    db_availability = None
+
+                if db_availability != availability:
+                    print(f"Availability changed for {model} @ {zipCode}! Sending notification...")
+                    table.put_item(
+                        Item={
+                            'ID': model_store_key,
+                            'availability': availability
+                        }
+                    )
+
+                    message = f"📱 {model}\n🏰 {store_name} ({zipCode})\n📍 {store['storeDistanceWithUnit']}\n{availability_icon} {availability.upper()}"
 
                     print(message)
                     telegram_bot_sendtext(message, bot_token, recipients)
