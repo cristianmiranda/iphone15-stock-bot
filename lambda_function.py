@@ -26,7 +26,10 @@ def run(apple_url, bot_token, recipients):
         # Iterate over each store in the JSON data
         for store in data['body']['content']['pickupMessage']['stores']:
             store_name = store['storeName']
+            store_latitude = store['storelatitude']
+            store_longitude = store['storelongitude']
             zipCode = store['address']['postalCode']
+            google_maps_link = f"https://maps.google.com/?q={store_latitude},{store_longitude}"
 
             print(f"-------------------------------------")
             print(f"> {store_name} ({zipCode})")
@@ -65,7 +68,7 @@ def run(apple_url, bot_token, recipients):
                         }
                     )
 
-                    message = f"📱 {model}\n🏰 {store_name} ({zipCode})\n📍 {store['storeDistanceWithUnit']}\n\n{availability_icon} **{availability.upper()}**\n\n🛒 {buy_url}"
+                    message = f"📱 {model}\n🏰 {store_name} ({zipCode})\n📍 {store['storeDistanceWithUnit']}\n🗺️ {google_maps_link}\n\n{availability_icon} **{availability.upper()}**\n\n🛒 {buy_url}"
 
                     print(message)
                     telegram_bot_sendtext(message, bot_token, recipients)
