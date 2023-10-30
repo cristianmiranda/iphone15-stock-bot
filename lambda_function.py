@@ -97,12 +97,7 @@ def handler(event, context):
     if recipients:
         print(f"Recipients: {recipients}")
 
-    print("#1 - Checking iPhone 15 availability")
-    run(apple_url=apple_url, bot_token=bot_token, recipients=recipients)
-
-    time.sleep(30)
-
-    print("#2 - Checking iPhone 15 availability")
+    print("Checking iPhone 15 availability")
     run(apple_url=apple_url, bot_token=bot_token, recipients=recipients)
 
     return { 'status' : 200, 'body' : 'Lambda executed successfully!' }
