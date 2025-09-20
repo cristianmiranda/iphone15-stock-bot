@@ -28,7 +28,7 @@ jobs:
     - name: Build, tag, and push image to Amazon ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: iphone15stockbot
+        ECR_REPOSITORY: iphonestockbot
         IMAGE_TAG: ${{ github.sha }}
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
@@ -39,9 +39,9 @@ jobs:
     - name: Update Lambda function
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: iphone15stockbot
+        ECR_REPOSITORY: iphonestockbot
         IMAGE_TAG: ${{ github.sha }}
       run: |
         aws lambda update-function-code \
-          --function-name iPhone15StockBot \
+          --function-name iPhoneStockBot \
           --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG

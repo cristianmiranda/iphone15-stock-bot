@@ -8,7 +8,7 @@ from datetime import datetime
 
 # Initializing a DynamoDB resource
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('IPHONE15_STOCK')
+table = dynamodb.Table('IPHONE_STOCK')
 
 
 def run(apple_url, bot_token, recipients):

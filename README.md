@@ -4,12 +4,12 @@
 
 ```bash
 # Build and push docker image
-docker build -t iphone15stockbot .
-docker tag iphone15stockbot:latest 387720813372.dkr.ecr.us-east-1.amazonaws.com/iphone15stockbot:latest
-docker push 387720813372.dkr.ecr.us-east-1.amazonaws.com/iphone15stockbot:latest
+docker build -t iphonestockbot .
+docker tag iphonestockbot:latest 387720813372.dkr.ecr.us-east-1.amazonaws.com/iphonestockbot:latest
+docker push 387720813372.dkr.ecr.us-east-1.amazonaws.com/iphonestockbot:latest
 
 # Refresh lambda
-aws lambda update-function-code --function-name iPhone15StockBot --image-uri 387720813372.dkr.ecr.us-east-1.amazonaws.com/iphone15stockbot:latest
+aws lambda update-function-code --function-name iPhoneStockBot --image-uri 387720813372.dkr.ecr.us-east-1.amazonaws.com/iphonestockbot:latest
 ```
 
 ## AWS Lambda payload
