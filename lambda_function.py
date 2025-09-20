@@ -68,7 +68,7 @@ def run(apple_url, bot_token, recipients):
                 model_parts = model.split(' ')
                 storage = model_parts[4].lower()  # Extracting "1TB"
                 color = '-'.join(model_parts[5:]).lower()  # Converting "Natural Titanium" to "natural-titanium"
-                buy_url = f"https://www.apple.com/shop/buy-iphone/iphone-15-pro/6.7-inch-display-{storage}-{color}-unlocked"
+                buy_url = f"https://www.apple.com/shop/buy-iphone/iphone-17-pro/6.9-inch-display-{storage}-{color}-unlocked"
 
                 availability_icon = '🚫'
                 if availability == 'available':
