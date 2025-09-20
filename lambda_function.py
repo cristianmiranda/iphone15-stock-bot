@@ -15,8 +15,34 @@ def run(apple_url, bot_token, recipients):
     # bot_token = sys.argv[1]
     # recipients = json.loads(sys.argv[2])
 
-    # Make a GET request to the URL
-    response = requests.get(apple_url)
+    # Make a GET request to the URL with proper headers and retry logic
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+    }
+
+    max_retries = 3
+    retry_delay = 1
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(apple_url, headers=headers, timeout=30)
+            if response.status_code != 503:
+                break
+        except requests.RequestException as e:
+            if attempt == max_retries - 1:
+                print(f"Failed to fetch data after {max_retries} attempts. Last error: {e}")
+                return
+
+        if attempt < max_retries - 1:
+            print(f"Attempt {attempt + 1} failed with status {response.status_code if 'response' in locals() else 'unknown'}. Retrying in {retry_delay} seconds...")
+            time.sleep(retry_delay)
+            retry_delay *= 2
 
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
