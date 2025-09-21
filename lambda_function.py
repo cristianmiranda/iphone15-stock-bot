@@ -79,11 +79,11 @@ def escape_markdown(text):
 def generate_availability_table(available_items):
     """Generate a compact table of available iPhones with buy links"""
     if not available_items:
-        return "\n\n📋 **CURRENTLY AVAILABLE**\n\n😔 *No iPhones currently in stock*\n💤 *All stores are out of inventory*\n\n🔔 *You'll be notified when stock becomes available!*"
+        return "\n**📋 CURRENTLY AVAILABLE**\n\n😔 *No iPhones currently in stock*\n💤 *All stores are out of inventory*\n\n🔔 *You'll be notified when stock becomes available!*"
 
-    table_text = "\n\n📋 **CURRENTLY AVAILABLE**\n\n"
+    table_text = "\n**📋 CURRENTLY AVAILABLE**\n\n"
     for item in available_items:
-        table_text += f"✅ **{escape_markdown(item['model'])}**\n🏪 {escape_markdown(item['store'])} *({escape_markdown(item['zipCode'])})*\n📍 [{escape_markdown(item['distance'])}]({item['maps_link']})\n🛒 [Buy Now]({item['buy_url']})\n\n"
+        table_text += f"✅ **{escape_markdown(item['model'])}** @ {escape_markdown(item['store'])} *({escape_markdown(item['zipCode'])})* - [Buy Now]({item['buy_url']})\n"
 
     return table_text
 
@@ -180,10 +180,10 @@ def run(apple_url, bot_token, recipients):
 
         # Send consolidated message if there are any changes
         if availability_changes:
-            header = "🚨 **STOCK ALERT** 🚨\n"
+            header = "**🚨 STOCK ALERT 🚨**\n\n---\n\n"
             consolidated_message = "\n\n---\n\n".join(availability_changes)
             availability_table = generate_availability_table(currently_available)
-            final_message = header + consolidated_message + availability_table
+            final_message = header + consolidated_message + "\n\n---\n" + availability_table
 
             print("Sending consolidated message:")
             print(final_message)

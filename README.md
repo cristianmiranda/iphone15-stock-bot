@@ -36,6 +36,8 @@ The Lambda function requires these environment variables:
 - `APPLE_FULFILLMENT_BASE_URL` - Apple fulfillment API endpoint
 - `LOCATION` - Apple store location code
 - `IPHONE_MODELS_CSV` - Comma-separated list of iPhone model codes to monitor
+- `TELEGRAM_BOT_TOKEN` - Your Telegram bot token
+- `TELEGRAM_CHAT_IDS` - JSON array of chat IDs to send notifications to
 - `REQUEST_TIMEOUT` - HTTP request timeout (optional, default: 30)
 - `MAX_RETRIES` - Maximum retry attempts (optional, default: 3)
 - `INITIAL_RETRY_DELAY` - Initial retry delay in seconds (optional, default: 1)
@@ -62,13 +64,12 @@ aws lambda update-function-code --function-name iPhoneStockBot --image-uri 38772
 
 ### Lambda Event Payload
 
-The Lambda function expects this JSON payload:
+The Lambda function no longer requires event payload parameters. All configuration is handled via environment variables.
+
+You can trigger the function with an empty event:
 
 ```json
-{
-  "bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
-  "recipients": [CHAT_ID_1, CHAT_ID_2]
-}
+{}
 ```
 
 ### Notification Format
@@ -76,14 +77,22 @@ The Lambda function expects this JSON payload:
 When availability changes, users receive notifications like:
 
 ```
-📱 iPhone 15 Pro Max 1TB Natural Titanium
-🏰 Apple Store Name (ZIP Code)
-📍 2.5 miles away
-🗺️ [Google Maps Link]
+🚨 STOCK ALERT 🚨
 
-✅ **AVAILABLE**
+📱 iPhone 17 Pro Max 1TB Deep Blue
+🏪 Apple Store Name (ZIP Code)
+📍 2.5 mi (clickable Maps link)
 
-🛒 [Apple Store Purchase Link]
+✅ AVAILABLE
+
+🛒 Buy Now
+
+📋 CURRENTLY AVAILABLE
+
+✅ iPhone 17 Pro Max 1TB Deep Blue
+🏪 Apple Store Name (ZIP Code)
+📍 2.5 mi (clickable Maps link)
+🛒 Buy Now
 ```
 
 ## 🖼️ AWS Resources
