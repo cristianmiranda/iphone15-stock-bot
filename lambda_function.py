@@ -63,6 +63,16 @@ def construct_apple_url(location=None, models_csv=None):
     return url
 
 
+def escape_markdown(text):
+    """Escape special characters for Telegram Markdown"""
+    if not text:
+        return text
+    # Escape Markdown special characters
+    special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '=', '|', '{', '}', '.', '!', '-']
+    for char in special_chars:
+        text = text.replace(char, f'\\{char}')
+    return text
+
 def generate_availability_table(available_items):
     """Generate a compact table of available iPhones with buy links"""
     if not available_items:
@@ -70,7 +80,7 @@ def generate_availability_table(available_items):
 
     table_text = "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 **CURRENTLY AVAILABLE**\n━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     for item in available_items:
-        table_text += f"✅ **{item['model']}**\n   🏪 {item['store']} *({item['zipCode']})*\n   🛒 [Buy Now]({item['buy_url']})\n\n"
+        table_text += f"✅ **{escape_markdown(item['model'])}**\n   🏪 {escape_markdown(item['store'])} *({escape_markdown(item['zipCode'])})*\n   🛒 [Buy Now]({item['buy_url']})\n\n"
 
     return table_text
 
@@ -160,7 +170,7 @@ def run(apple_url, bot_token, recipients):
                         }
                     )
 
-                    change_message = f"📱 **{model}**\n🏪 {store_name} *({zipCode})*\n📍 {store['storeDistanceWithUnit']}\n🗺️ [View on Maps]({google_maps_link})\n\n{availability_icon} **{availability.upper()}**\n\n🛒 [Buy Now]({buy_url})"
+                    change_message = f"📱 **{escape_markdown(model)}**\n🏪 {escape_markdown(store_name)} *({escape_markdown(zipCode)})*\n📍 {escape_markdown(store['storeDistanceWithUnit'])}\n🗺️ [View on Maps]({google_maps_link})\n\n{availability_icon} **{availability.upper()}**\n\n🛒 [Buy Now]({buy_url})"
                     availability_changes.append(change_message)
 
         # Send consolidated message if there are any changes
