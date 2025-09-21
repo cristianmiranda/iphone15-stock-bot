@@ -180,7 +180,7 @@ def run(apple_url, bot_token, recipients):
 
 def telegram_bot_sendtext(bot_message, bot_token, recipients):
     for bot_chatID in recipients:
-        send_text = TELEGRAM_API_BASE_URL + bot_token + '/sendMessage?chat_id=' + bot_chatID + '&parse_mode=Markdown&text=' + bot_message
+        send_text = TELEGRAM_API_BASE_URL + bot_token + '/sendMessage?chat_id=' + bot_chatID + '&parse_mode=Markdown&disable_web_page_preview=true&text=' + bot_message
         response = requests.get(send_text)
         print(response.json())
 
