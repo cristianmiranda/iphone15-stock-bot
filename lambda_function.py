@@ -63,6 +63,18 @@ def construct_apple_url(location=None, models_csv=None):
     return url
 
 
+def generate_availability_table(available_items):
+    """Generate a compact table of available iPhones with buy links"""
+    if not available_items:
+        return ""
+
+    table_text = "\n\n📋 **CURRENTLY AVAILABLE:**\n"
+    for item in available_items:
+        table_text += f"• {item['model']} @ {item['store']} ({item['distance']}) - [Buy]({item['buy_url']})\n"
+
+    return table_text
+
+
 def run(apple_url, bot_token, recipients):
     # bot_token = sys.argv[1]
     # recipients = json.loads(sys.argv[2])
@@ -93,6 +105,10 @@ def run(apple_url, bot_token, recipients):
         # Load the JSON data from the response
         data = response.json()
 
+        # Collect availability changes and current available items
+        availability_changes = []
+        currently_available = []
+
         # Iterate over each store in the JSON data
         for store in data['body']['content']['pickupMessage']['stores']:
             store_name = store['storeName']
@@ -117,6 +133,12 @@ def run(apple_url, bot_token, recipients):
                 availability_icon = '🚫'
                 if availability == 'available':
                     availability_icon = '✅'
+                    currently_available.append({
+                        'model': model,
+                        'store': store_name,
+                        'distance': store['storeDistanceWithUnit'],
+                        'buy_url': buy_url
+                    })
 
                 print(f"{availability_icon} {model} @ {zipCode} is {availability}")
 
@@ -130,7 +152,7 @@ def run(apple_url, bot_token, recipients):
                     db_availability = None
 
                 if db_availability != availability:
-                    print(f"Availability changed for {model} @ {zipCode}! Sending notification...")
+                    print(f"Availability changed for {model} @ {zipCode}! Recording change...")
                     table.put_item(
                         Item={
                             'ID': model_store_key,
@@ -138,10 +160,20 @@ def run(apple_url, bot_token, recipients):
                         }
                     )
 
-                    message = f"📱 {model}\n🏰 {store_name} ({zipCode})\n📍 {store['storeDistanceWithUnit']}\n🗺️ {google_maps_link}\n\n{availability_icon} **{availability.upper()}**\n\n🛒 {buy_url}"
+                    change_message = f"📱 {model}\n🏰 {store_name} ({zipCode})\n📍 {store['storeDistanceWithUnit']}\n🗺️ {google_maps_link}\n\n{availability_icon} **{availability.upper()}**\n\n🛒 {buy_url}"
+                    availability_changes.append(change_message)
 
-                    print(message)
-                    telegram_bot_sendtext(message, bot_token, recipients)
+        # Send consolidated message if there are any changes
+        if availability_changes:
+            consolidated_message = "\n\n---\n\n".join(availability_changes)
+            availability_table = generate_availability_table(currently_available)
+            final_message = consolidated_message + availability_table
+
+            print("Sending consolidated message:")
+            print(final_message)
+            telegram_bot_sendtext(final_message, bot_token, recipients)
+        else:
+            print("No availability changes detected.")
     else:
         print(f"Failed to fetch the data. Status code: {response.status_code}")
 
