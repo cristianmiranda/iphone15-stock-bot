@@ -66,7 +66,7 @@ def construct_apple_url(location=None, models_csv=None):
 def generate_availability_table(available_items):
     """Generate a compact table of available iPhones with buy links"""
     if not available_items:
-        return ""
+        return "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 **CURRENTLY AVAILABLE**\n━━━━━━━━━━━━━━━━━━━━━━━━━\n\n😔 *No iPhones currently in stock*\n💤 *All stores are out of inventory*\n\n🔔 *You'll be notified when stock becomes available!*"
 
     table_text = "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 **CURRENTLY AVAILABLE**\n━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     for item in available_items:
