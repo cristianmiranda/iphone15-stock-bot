@@ -68,9 +68,9 @@ def generate_availability_table(available_items):
     if not available_items:
         return ""
 
-    table_text = "\n\n📋 **CURRENTLY AVAILABLE:**\n"
+    table_text = "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 **CURRENTLY AVAILABLE**\n━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     for item in available_items:
-        table_text += f"• {item['model']} @ {item['store']} ({item['distance']}) - [Buy]({item['buy_url']})\n"
+        table_text += f"✅ **{item['model']}**\n   🏪 {item['store']} *({item['zipCode']})*\n   🛒 [Buy Now]({item['buy_url']})\n\n"
 
     return table_text
 
@@ -136,7 +136,7 @@ def run(apple_url, bot_token, recipients):
                     currently_available.append({
                         'model': model,
                         'store': store_name,
-                        'distance': store['storeDistanceWithUnit'],
+                        'zipCode': zipCode,
                         'buy_url': buy_url
                     })
 
@@ -160,7 +160,7 @@ def run(apple_url, bot_token, recipients):
                         }
                     )
 
-                    change_message = f"📱 {model}\n🏰 {store_name} ({zipCode})\n📍 {store['storeDistanceWithUnit']}\n🗺️ {google_maps_link}\n\n{availability_icon} **{availability.upper()}**\n\n🛒 {buy_url}"
+                    change_message = f"📱 **{model}**\n🏪 {store_name} *({zipCode})*\n📍 {store['storeDistanceWithUnit']}\n🗺️ [View on Maps]({google_maps_link})\n\n{availability_icon} **{availability.upper()}**\n\n🛒 [Buy Now]({buy_url})"
                     availability_changes.append(change_message)
 
         # Send consolidated message if there are any changes
