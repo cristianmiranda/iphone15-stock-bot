@@ -4,6 +4,7 @@ import boto3
 import requests
 import time
 import os
+import json
 from urllib.parse import quote
 
 from datetime import datetime
@@ -20,6 +21,8 @@ INITIAL_RETRY_DELAY = int(os.getenv('INITIAL_RETRY_DELAY')) if os.getenv('INITIA
 IPHONE_MODELS_CSV = os.getenv('IPHONE_MODELS_CSV')
 APPLE_FULFILLMENT_BASE_URL = os.getenv('APPLE_FULFILLMENT_BASE_URL')
 LOCATION = os.getenv('LOCATION')
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+TELEGRAM_CHAT_IDS = os.getenv('TELEGRAM_CHAT_IDS')
 
 # HTTP Headers
 DEFAULT_HEADERS = {
@@ -196,9 +199,9 @@ def telegram_bot_sendtext(bot_message, bot_token, recipients):
 
 
 def handler(event, context):
-    # Get parameters from event
-    bot_token = event['bot_token']
-    recipients = event['recipients']
+    # Get parameters from environment variables
+    bot_token = TELEGRAM_BOT_TOKEN
+    recipients = json.loads(TELEGRAM_CHAT_IDS) if TELEGRAM_CHAT_IDS else []
 
     # Construct Apple URL from environment variables
     apple_url = construct_apple_url()
