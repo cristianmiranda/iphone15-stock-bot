@@ -6,6 +6,7 @@ import time
 import os
 import json
 from urllib.parse import quote
+from decimal import Decimal
 
 from datetime import datetime
 
@@ -71,6 +72,8 @@ def escape_markdown(text):
     """Escape special characters for Telegram Markdown"""
     if not text:
         return text
+    # Convert to string if not already
+    text = str(text)
     # Escape Markdown special characters, but preserve decimal numbers
     special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '=', '|', '{', '}', '!']
     for char in special_chars:
@@ -80,7 +83,7 @@ def escape_markdown(text):
 def generate_availability_table(available_items):
     """Generate a compact table of available iPhones with buy links"""
     if not available_items:
-        return "\n**📋 CURRENTLY AVAILABLE**\n\n😔 *No iPhones currently in stock**"
+        return "\n**📋 CURRENTLY AVAILABLE**\n\n😔 *No iPhones currently in stock*"
 
     table_text = "\n**📋 CURRENTLY AVAILABLE**\n\n"
     for item in available_items:
@@ -132,6 +135,7 @@ def run(apple_url, bot_token, recipients, zip_code):
             zipCode = store['address']['postalCode']
             city = store.get('city', 'Unknown City')
             storeDistanceWithUnit = store['storeDistanceWithUnit']
+            distance_miles = store['storedistance']
             google_maps_link = f"{GOOGLE_MAPS_BASE_URL}{store_latitude},{store_longitude}"
 
             # Store the area city (assuming all stores in same ZIP have same city)
@@ -159,7 +163,7 @@ def run(apple_url, bot_token, recipients, zip_code):
                         'store': store_name,
                         'zipCode': zipCode,
                         'city': city,
-                        'distance': storeDistanceWithUnit,
+                        'distance': distance_miles,
                         'maps_link': google_maps_link,
                         'buy_url': buy_url
                     })
@@ -182,7 +186,7 @@ def run(apple_url, bot_token, recipients, zip_code):
                             'ID': model_store_key,
                             'availability': availability,
                             'city': city,
-                            'distance': storeDistanceWithUnit
+                            'distance': Decimal(str(distance_miles))
                         }
                     )
 
