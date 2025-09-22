@@ -80,11 +80,11 @@ def escape_markdown(text):
 def generate_availability_table(available_items):
     """Generate a compact table of available iPhones with buy links"""
     if not available_items:
-        return "\n**📋 CURRENTLY AVAILABLE**\n\n😔 *No iPhones currently in stock*\n💤 *All stores are out of inventory*\n\n🔔 *You'll be notified when stock becomes available!*"
+        return "\n**📋 CURRENTLY AVAILABLE**\n\n😔 *No iPhones currently in stock**"
 
     table_text = "\n**📋 CURRENTLY AVAILABLE**\n\n"
     for item in available_items:
-        table_text += f"✅ **{escape_markdown(item['model'])}** @ {escape_markdown(item['store'])} *({escape_markdown(item['zipCode'])})* - [Buy Now]({item['buy_url']})\n"
+        table_text += f"✅ **{escape_markdown(item['model'])}** @ {escape_markdown(item['store'])} - {escape_markdown(item['city'])} *({escape_markdown(item['zipCode'])})* - *{escape_markdown(item['distance'])}* - [Buy Now]({item['buy_url']})\n"
 
     return table_text
 
@@ -122,6 +122,7 @@ def run(apple_url, bot_token, recipients, zip_code):
         # Collect availability changes and current available items
         availability_changes = []
         currently_available = []
+        area_city = None
 
         # Iterate over each store in the JSON data
         for store in data['body']['content']['pickupMessage']['stores']:
@@ -129,7 +130,13 @@ def run(apple_url, bot_token, recipients, zip_code):
             store_latitude = store['storelatitude']
             store_longitude = store['storelongitude']
             zipCode = store['address']['postalCode']
+            city = store.get('city', 'Unknown City')
+            storeDistanceWithUnit = store['storeDistanceWithUnit']
             google_maps_link = f"{GOOGLE_MAPS_BASE_URL}{store_latitude},{store_longitude}"
+
+            # Store the area city (assuming all stores in same ZIP have same city)
+            if area_city is None:
+                area_city = city
 
             print(f"-------------------------------------")
             print(f"> {store_name} ({zipCode})")
@@ -151,12 +158,13 @@ def run(apple_url, bot_token, recipients, zip_code):
                         'model': model,
                         'store': store_name,
                         'zipCode': zipCode,
-                        'distance': store['storeDistanceWithUnit'],
+                        'city': city,
+                        'distance': storeDistanceWithUnit,
                         'maps_link': google_maps_link,
                         'buy_url': buy_url
                     })
 
-                print(f"{availability_icon} {model} @ {zipCode} is {availability}")
+                print(f"{availability_icon} {model} @ {city} ({zipCode}) is {availability}")
 
                 model_store_key = f"{model}@{store_name}"
 
@@ -172,11 +180,13 @@ def run(apple_url, bot_token, recipients, zip_code):
                     table.put_item(
                         Item={
                             'ID': model_store_key,
-                            'availability': availability
+                            'availability': availability,
+                            'city': city,
+                            'distance': storeDistanceWithUnit
                         }
                     )
 
-                    change_message = f"📱 **{escape_markdown(model)}**\n🏪 {escape_markdown(store_name)} *({escape_markdown(zipCode)})*\n📍 [{escape_markdown(store['storeDistanceWithUnit'])}]({google_maps_link})\n\n{availability_icon} **{availability.upper()}**\n\n🛒 [Buy Now]({buy_url})"
+                    change_message = f"📱 **{escape_markdown(model)}**\n🏪 {escape_markdown(store_name)} - {escape_markdown(city)} *({escape_markdown(zipCode)})*\n📍 [{escape_markdown(storeDistanceWithUnit)}]({google_maps_link})\n\n{availability_icon} **{availability.upper()}**\n\n🛒 [Buy Now]({buy_url})"
                     availability_changes.append(change_message)
 
         # Don't send individual messages - collect changes for consolidation
@@ -186,11 +196,11 @@ def run(apple_url, bot_token, recipients, zip_code):
         else:
             print("No availability changes detected.")
 
-        # Return currently available items, changes, and change status for consolidation
-        return currently_available, availability_changes, had_changes
+        # Return currently available items, changes, change status, and area city for consolidation
+        return currently_available, availability_changes, had_changes, area_city
     else:
         print(f"Failed to fetch the data. Status code: {response.status_code}")
-        return [], [], False
+        return [], [], False, "Unknown City"
 
 
 def telegram_bot_sendtext(bot_message, bot_token, recipients):
@@ -236,12 +246,12 @@ def handler(event, context):
 
             if apple_url:
                 print("Checking iPhone stock availability")
-                currently_available, availability_changes, had_changes = run(apple_url=apple_url, bot_token=bot_token, recipients=recipients, zip_code=zip_code)
+                currently_available, availability_changes, had_changes, area_city = run(apple_url=apple_url, bot_token=bot_token, recipients=recipients, zip_code=zip_code)
 
                 if had_changes:
                     any_changes_detected = True
-                    # Add ZIP code header and changes
-                    zip_header = f"**🚨 STOCK ALERT ({zip_code}) 🚨**"
+                    # Add ZIP code header with city and changes
+                    zip_header = f"**🚨 STOCK ALERT - {area_city} ({zip_code}) 🚨**"
                     all_changes.append(zip_header)
                     all_changes.extend(availability_changes)
 
@@ -255,7 +265,7 @@ def handler(event, context):
             seen_items = set()
 
             for item in all_currently_available:
-                item_key = f"{item['model']}@{item['store']}@{item['zipCode']}"
+                item_key = f"{item['model']}@{item['store']}@{item['city']}@{item['zipCode']}"
                 if item_key not in seen_items:
                     seen_items.add(item_key)
                     unique_available.append(item)

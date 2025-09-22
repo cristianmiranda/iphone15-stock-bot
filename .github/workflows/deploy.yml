@@ -56,14 +56,10 @@ jobs:
         IMAGE_TAG: ${{ github.sha }}
       run: |
         COMMIT_SHA="${{ github.sha }}"
-        COMMIT_MSG_RAW="${{ github.event.head_commit.message }}"
         REPO_NAME="${{ github.repository }}"
         ACTOR="${{ github.actor }}"
 
-        # Escape special characters for Markdown and URL encoding
-        COMMIT_MSG=$(echo "$COMMIT_MSG_RAW" | sed 's/[_*[\]()~`>#+=|{}.!-]/\\&/g' | head -n1)
-
-        MESSAGE="🚀 **Deployment Successful**%0A%0A📦 **ECR Image Pushed**%0A🏷️ Tag: \`${IMAGE_TAG}\`%0A🖼️ Registry: \`${ECR_REGISTRY}/${ECR_REPOSITORY}\`%0A%0A⚡ **Lambda Updated**%0A🔧 Function: \`iPhoneStockBot\`%0A%0A📝 **Commit Details**%0A👤 Author: ${ACTOR}%0A💬 Message: ${COMMIT_MSG}%0A🔗 [View Commit](https://github.com/${REPO_NAME}/commit/${COMMIT_SHA})"
+        MESSAGE="🚀 **Deployment Successful**%0A%0A📦 **ECR Image Pushed**%0A🏷️ Tag: \`${IMAGE_TAG}\`%0A🖼️ Registry: \`${ECR_REGISTRY}/${ECR_REPOSITORY}\`%0A%0A⚡ **Lambda Updated**%0A🔧 Function: \`iPhoneStockBot\`%0A%0A📝 **Commit Details**%0A👤 Author: ${ACTOR}%0A🔗 [View Commit](https://github.com/${REPO_NAME}/commit/${COMMIT_SHA})"
 
         # Parse JSON array of chat IDs and send to each
         echo "${TELEGRAM_CHAT_IDS}" | jq -r '.[]' | while read -r CHAT_ID; do
