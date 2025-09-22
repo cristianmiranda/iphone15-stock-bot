@@ -18,9 +18,9 @@ USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT')) if os.getenv('REQUEST_TIMEOUT') else None
 MAX_RETRIES = int(os.getenv('MAX_RETRIES')) if os.getenv('MAX_RETRIES') else None
 INITIAL_RETRY_DELAY = int(os.getenv('INITIAL_RETRY_DELAY')) if os.getenv('INITIAL_RETRY_DELAY') else None
-IPHONE_MODELS_CSV = os.getenv('IPHONE_MODELS_CSV')
+IPHONE_MODELS = os.getenv('IPHONE_MODELS')
 APPLE_FULFILLMENT_BASE_URL = os.getenv('APPLE_FULFILLMENT_BASE_URL')
-LOCATION = os.getenv('LOCATION')
+ZIP_CODES = os.getenv('ZIP_CODES')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_IDS = os.getenv('TELEGRAM_CHAT_IDS')
 
@@ -45,16 +45,17 @@ def construct_apple_url(location=None, models_csv=None):
     Construct Apple fulfillment messages URL from environment variables
 
     Args:
-        location: Store location code (defaults to LOCATION)
-        models_csv: Comma-separated list of iPhone model codes (defaults to IPHONE_MODELS_CSV)
+        location: Store location code (defaults to first ZIP_CODES entry)
+        models_csv: Comma-separated list of iPhone model codes (defaults to IPHONE_MODELS)
 
     Returns:
         Complete Apple fulfillment URL
     """
     if location is None:
-        location = LOCATION
+        # Use the first ZIP code as default location
+        location = ZIP_CODES.split(',')[0] if ZIP_CODES else None
     if models_csv is None:
-        models_csv = IPHONE_MODELS_CSV
+        models_csv = IPHONE_MODELS
 
     # Split the CSV and create parts parameters with URL encoding
     models = models_csv.split(',')
@@ -88,7 +89,7 @@ def generate_availability_table(available_items):
     return table_text
 
 
-def run(apple_url, bot_token, recipients):
+def run(apple_url, bot_token, recipients, zip_code):
     # bot_token = sys.argv[1]
     # recipients = json.loads(sys.argv[2])
 
@@ -178,20 +179,18 @@ def run(apple_url, bot_token, recipients):
                     change_message = f"📱 **{escape_markdown(model)}**\n🏪 {escape_markdown(store_name)} *({escape_markdown(zipCode)})*\n📍 [{escape_markdown(store['storeDistanceWithUnit'])}]({google_maps_link})\n\n{availability_icon} **{availability.upper()}**\n\n🛒 [Buy Now]({buy_url})"
                     availability_changes.append(change_message)
 
-        # Send consolidated message if there are any changes
+        # Don't send individual messages - collect changes for consolidation
+        had_changes = bool(availability_changes)
         if availability_changes:
-            header = "**🚨 STOCK ALERT 🚨**\n\n---\n\n"
-            consolidated_message = "\n\n---\n\n".join(availability_changes)
-            availability_table = generate_availability_table(currently_available)
-            final_message = header + consolidated_message + "\n\n---\n" + availability_table
-
-            print("Sending consolidated message:")
-            print(final_message)
-            telegram_bot_sendtext(final_message, bot_token, recipients)
+            print(f"Availability changes detected for ZIP {zip_code}")
         else:
             print("No availability changes detected.")
+
+        # Return currently available items, changes, and change status for consolidation
+        return currently_available, availability_changes, had_changes
     else:
         print(f"Failed to fetch the data. Status code: {response.status_code}")
+        return [], [], False
 
 
 def telegram_bot_sendtext(bot_message, bot_token, recipients):
@@ -202,13 +201,15 @@ def telegram_bot_sendtext(bot_message, bot_token, recipients):
 
 
 def handler(event, context):
+    import datetime
+    print(f"\n=== Lambda handler started at {datetime.datetime.now()} ===")
+
     # Get parameters from environment variables
     bot_token = TELEGRAM_BOT_TOKEN
-    recipients = json.loads(TELEGRAM_CHAT_IDS) if TELEGRAM_CHAT_IDS else []
+    recipients = TELEGRAM_CHAT_IDS.split(',') if TELEGRAM_CHAT_IDS else []
 
-    # Construct Apple URL from environment variables
-    apple_url = construct_apple_url()
-    print(f"Constructed Apple URL from environment variables: {apple_url}")
+    # Process multiple ZIP codes
+    zip_codes = ZIP_CODES.split(',') if ZIP_CODES else []
 
     if bot_token:
         print(f"Bot token received!")
@@ -216,7 +217,63 @@ def handler(event, context):
     if recipients:
         print(f"Recipients: {recipients}")
 
-    print("Checking iPhone stock availability")
-    run(apple_url=apple_url, bot_token=bot_token, recipients=recipients)
+    if zip_codes:
+        print(f"ZIP codes to check: {zip_codes}")
+
+        # Collect all changes and currently available items across all ZIP codes
+        all_currently_available = []
+        all_changes = []
+        any_changes_detected = False
+
+        # Check availability for each ZIP code
+        for zip_code in zip_codes:
+            zip_code = zip_code.strip()
+            print(f"\n--- Checking availability for ZIP code: {zip_code} ---")
+
+            # Construct Apple URL for this specific ZIP code
+            apple_url = construct_apple_url(location=zip_code)
+            print(f"Constructed Apple URL: {apple_url}")
+
+            if apple_url:
+                print("Checking iPhone stock availability")
+                currently_available, availability_changes, had_changes = run(apple_url=apple_url, bot_token=bot_token, recipients=recipients, zip_code=zip_code)
+
+                if had_changes:
+                    any_changes_detected = True
+                    # Add ZIP code header and changes
+                    zip_header = f"**🚨 STOCK ALERT ({zip_code}) 🚨**"
+                    all_changes.append(zip_header)
+                    all_changes.extend(availability_changes)
+
+                if currently_available:
+                    all_currently_available.extend(currently_available)
+
+        # Send consolidated message only if there were changes
+        if bot_token and recipients and any_changes_detected:
+            # Remove duplicates from available items
+            unique_available = []
+            seen_items = set()
+
+            for item in all_currently_available:
+                item_key = f"{item['model']}@{item['store']}@{item['zipCode']}"
+                if item_key not in seen_items:
+                    seen_items.add(item_key)
+                    unique_available.append(item)
+
+            # Build consolidated message
+            changes_section = "\n\n---\n\n".join(all_changes)
+            availability_table = generate_availability_table(unique_available)
+
+            final_message = changes_section
+            if availability_table:
+                final_message += "\n\n---\n" + availability_table
+
+            print(f"\nSending consolidated message with {len(unique_available)} unique available items:")
+            print(final_message)
+            telegram_bot_sendtext(final_message, bot_token, recipients)
+        else:
+            print("No message sent (no changes detected)")
+    else:
+        print("No ZIP codes configured")
 
     return { 'status' : 200, 'body' : 'Lambda executed successfully!' }
