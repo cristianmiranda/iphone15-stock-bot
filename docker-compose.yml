@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  iphone-stock-bot:
+    image: python:3.11-slim
+    env_file:
+      - .env
+    depends_on:
+      - dynamodb
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: >
+      bash -c "
+        pip install -r requirements.txt &&
+        python local_runner.py
+      "
+
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8001:8000"
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb"]
+
+volumes:
+  dynamodb_data:

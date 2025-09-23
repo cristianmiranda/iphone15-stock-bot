@@ -7,7 +7,6 @@ import os
 import json
 from urllib.parse import quote
 from decimal import Decimal
-
 from datetime import datetime
 
 # Constants - can be moved to environment variables
@@ -62,8 +61,8 @@ def construct_apple_url(location=None, models_csv=None):
     models = models_csv.split(',')
     parts_params = '&'.join([f'parts.{i}={quote(model.strip())}' for i, model in enumerate(models)])
 
-    # Construct the full URL
-    url = f"{APPLE_FULFILLMENT_BASE_URL}?mts.0=regular&mts.1=compact&pl=true&location={location}&{parts_params}"
+    # Construct the full URL with additional parameters to match working format
+    url = f"{APPLE_FULFILLMENT_BASE_URL}?fae=true&pl=true&mts.0=regular&cppart=UNLOCKED/US&{parts_params}&location={location}"
 
     return url
 
@@ -92,25 +91,75 @@ def generate_availability_table(available_items):
     return table_text
 
 
+def get_apple_cookies():
+    """Get cookies from environment variable"""
+    session = requests.Session()
+
+    # Get cookies from environment variable
+    manual_cookies = os.getenv('APPLE_COOKIES')
+    if manual_cookies:
+        print("Using manually configured cookies from environment")
+        # Parse the cookie string and add to session
+        for cookie_pair in manual_cookies.split('; '):
+            if '=' in cookie_pair:
+                name, value = cookie_pair.split('=', 1)
+                session.cookies.set(name, value, domain='.apple.com')
+        return session
+    else:
+        print("❌ No APPLE_COOKIES environment variable found!")
+        return None
+
+
 def run(apple_url, bot_token, recipients, zip_code):
     # bot_token = sys.argv[1]
     # recipients = json.loads(sys.argv[2])
 
-    # Make a GET request to the URL with proper headers and retry logic
-    headers = DEFAULT_HEADERS
+    # Get cookies first by visiting the Apple store page
+    session = get_apple_cookies()
+    if not session:
+        print("Failed to get Apple cookies, aborting")
+
+        # Send Telegram notification about missing cookies
+        error_message = f"🚨 **iPhone Stock Bot Error**\n\n❌ No Apple cookies configured for ZIP code {zip_code}\n\n💡 Please set the APPLE\\_COOKIES environment variable\n\n⏰ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        telegram_bot_sendtext(error_message, bot_token, recipients)
+        return [], [], False, "Unknown City"
+
+    # Add a small delay to let cookies settle
+    time.sleep(2)
+
+    # Update headers for API call to match the curl request
+    api_headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:142.0) Gecko/20100101 Firefox/142.0',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Referer': 'https://www.apple.com/shop/buy-iphone/iphone-17-pro/6.9-inch-display-256gb-deep-blue-unlocked',
+        'x-aos-ui-fetch-call-1': '1ox4zzam97-mfwkh3vz',
+        'Connection': 'keep-alive',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+        'Priority': 'u=0'
+    }
+
+    session.headers.update(api_headers)
 
     max_retries = MAX_RETRIES or 3
     retry_delay = INITIAL_RETRY_DELAY or 1
 
     for attempt in range(max_retries):
         try:
-            response = requests.get(apple_url, headers=headers, timeout=REQUEST_TIMEOUT or 30)
-            if response.status_code != 503:
+            response = session.get(apple_url, timeout=REQUEST_TIMEOUT or 60, allow_redirects=True)
+            if response.status_code not in [503, 541]:
                 break
         except requests.RequestException as e:
             if attempt == max_retries - 1:
                 print(f"Failed to fetch data after {max_retries} attempts. Last error: {e}")
-                return
+
+                # Send Telegram notification about the failure
+                error_message = f"🚨 **iPhone Stock Bot Error**\n\n❌ Failed to connect to Apple API for ZIP code {zip_code}\n\n🔄 Tried {max_retries} times\n💥 Error: {str(e)}\n\n⏰ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                telegram_bot_sendtext(error_message, bot_token, recipients)
+                return [], [], False, "Unknown City"
 
         if attempt < max_retries - 1:
             print(f"Attempt {attempt + 1} failed with status {response.status_code if 'response' in locals() else 'unknown'}. Retrying in {retry_delay} seconds...")
@@ -148,7 +197,17 @@ def run(apple_url, bot_token, recipients, zip_code):
 
             for part, details in store['partsAvailability'].items():
                 availability = details['pickupDisplay']
-                model = details['messageTypes']['compact']['storePickupProductTitle']
+
+                # Try to get model name from different possible locations
+                model = None
+                if 'messageTypes' in details:
+                    if 'compact' in details['messageTypes']:
+                        model = details['messageTypes']['compact']['storePickupProductTitle']
+                    elif 'regular' in details['messageTypes']:
+                        model = details['messageTypes']['regular']['storePickupProductTitle']
+
+                if not model:
+                    model = f"iPhone Model {part}"  # Fallback name
 
                 model_parts = model.split(' ')
                 storage = model_parts[4].lower()  # Extracting "1TB"
@@ -204,6 +263,10 @@ def run(apple_url, bot_token, recipients, zip_code):
         return currently_available, availability_changes, had_changes, area_city
     else:
         print(f"Failed to fetch the data. Status code: {response.status_code}")
+
+        # Send Telegram notification about the HTTP error
+        error_message = f"🚨 **iPhone Stock Bot Error**\n\n❌ Apple API returned error for ZIP code {zip_code}\n\n🔢 Status Code: {response.status_code}\n🌐 URL: {apple_url}\n\n⏰ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n💡 This might be due to:\n• Rate limiting\n• Expired cookies\n• API changes"
+        telegram_bot_sendtext(error_message, bot_token, recipients)
         return [], [], False, "Unknown City"
 
 
