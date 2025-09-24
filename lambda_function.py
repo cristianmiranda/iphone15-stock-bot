@@ -155,10 +155,6 @@ def run(apple_url, bot_token, recipients, zip_code):
         except requests.RequestException as e:
             if attempt == max_retries - 1:
                 print(f"Failed to fetch data after {max_retries} attempts. Last error: {e}")
-
-                # Send Telegram notification about the failure
-                error_message = f"🚨 **iPhone Stock Bot Error**\n\n❌ Failed to connect to Apple API for ZIP code {zip_code}\n\n🔄 Tried {max_retries} times\n💥 Error: {str(e)}\n\n⏰ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                telegram_bot_sendtext(error_message, bot_token, recipients)
                 return [], [], False, "Unknown City"
 
         if attempt < max_retries - 1:
