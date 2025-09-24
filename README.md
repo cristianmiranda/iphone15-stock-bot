@@ -45,31 +45,69 @@ The Lambda function requires these environment variables:
 
 ## 🍪 Getting Apple Cookies
 
-Apple's fulfillment API requires valid browser cookies for authentication. To obtain these cookies:
+Apple is now enforcing cookies and doesn't allow anonymous requests anymore. To obtain valid cookies for authentication:
 
-1. **Navigate to the Apple fulfillment page** in your browser:
+1. **Navigate to an Apple iPhone purchase page** in your browser and perform human interactions:
    ```
-   https://www.apple.com/shop/fulfillment-messages?fae=true&pl=true&mts.0=regular&cppart=UNLOCKED/US&parts.0=MFXM4LL/A&location=32839
+   https://www.apple.com/shop/buy-iphone/iphone-17-pro/6.9-inch-display-512gb-deep-blue-unlocked
    ```
 
-2. **Open Developer Tools** (F12 or right-click → Inspect)
+2. **Scroll down or interact with the page** - perform some human-like actions to avoid detection
 
-3. **Go to the Network tab** and refresh the page
-
-4. **Find the fulfillment-messages request** in the network log
-
-5. **Right-click on the request** → Copy → Copy as cURL
-
-6. **Extract the Cookie header** from the cURL command - it will look like:
+3. **Run the cookie extraction script**:
    ```bash
-   -H 'Cookie: ac_ss=f0e52d:1:1769443785|a2926c...'
+   ./get-cookie.sh
    ```
 
-7. **Copy everything after `Cookie: `** and set it as the `APPLE_COOKIES` environment variable
+   This script will automatically:
+   - Find your Firefox profile
+   - Extract cookies from the SQLite database
+   - Display them in the required format
 
-**Note:** Cookies expire periodically, so you'll need to update them when the bot starts failing with authentication errors.
+4. **Copy the Cookie header** from the script output and set it as the `APPLE_COOKIES` environment variable
 
-## 🔧 Deployment
+**Alternative Manual Method:**
+
+1. Open Developer Tools (F12) while on the Apple page
+2. Go to the Network tab and refresh the page
+3. Find any Apple API request in the network log
+4. Right-click → Copy → Copy as cURL
+5. Extract the Cookie header from the cURL command
+
+**Note:** Cookies expire periodically (aboute every 2 hours), so you'll need to update them when the bot starts failing with authentication errors.
+
+## 🔧 Development & Deployment
+
+### Local Development with Docker Compose
+
+To run the bot locally using Docker Compose:
+
+1. **Create a `.env` file** with your environment variables (use `.env.sample` as template)
+
+2. **Build and run with Docker Compose**:
+   ```bash
+   docker compose up --build
+   ```
+
+3. **Run in detached mode** (background):
+   ```bash
+   docker compose up -d --build
+   ```
+
+4. **For debugging, run interactively**:
+   ```bash
+   docker compose run --rm app /bin/bash
+   ```
+
+5. **View logs**:
+   ```bash
+   docker compose logs -f
+   ```
+
+6. **Stop the service**:
+   ```bash
+   docker compose down
+   ```
 
 ### Automated Deployment (GitHub Actions)
 
