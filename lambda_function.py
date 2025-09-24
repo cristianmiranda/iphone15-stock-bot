@@ -35,6 +35,7 @@ DEFAULT_HEADERS = {
     'Upgrade-Insecure-Requests': '1',
 }
 
+
 # Initializing a DynamoDB resource
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(DYNAMODB_TABLE_NAME)
@@ -61,7 +62,7 @@ def construct_apple_url(location=None, models_csv=None):
     models = models_csv.split(',')
     parts_params = '&'.join([f'parts.{i}={quote(model.strip())}' for i, model in enumerate(models)])
 
-    # Construct the full URL with additional parameters to match working format
+    # Construct the full URL using the working curl format (with location=ZIP)
     url = f"{APPLE_FULFILLMENT_BASE_URL}?fae=true&pl=true&mts.0=regular&cppart=UNLOCKED/US&{parts_params}&location={location}"
 
     return url
@@ -127,14 +128,13 @@ def run(apple_url, bot_token, recipients, zip_code):
     # Add a small delay to let cookies settle
     time.sleep(2)
 
-    # Update headers for API call to match the curl request
     api_headers = {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:142.0) Gecko/20100101 Firefox/142.0',
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0',
         'Accept': '*/*',
         'Accept-Language': 'en-US,en;q=0.5',
         'Accept-Encoding': 'gzip, deflate, br, zstd',
-        'Referer': 'https://www.apple.com/shop/buy-iphone/iphone-17-pro/6.9-inch-display-256gb-deep-blue-unlocked',
-        'x-aos-ui-fetch-call-1': '1ox4zzam97-mfwkh3vz',
+        'Referer': 'https://www.apple.com/shop/buy-iphone/iphone-17-pro/6.9-inch-display-512gb-deep-blue-unlocked',
+        'x-skip-redirect': 'true',
         'Connection': 'keep-alive',
         'Sec-Fetch-Dest': 'empty',
         'Sec-Fetch-Mode': 'cors',
