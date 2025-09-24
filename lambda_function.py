@@ -104,9 +104,18 @@ def generate_availability_table(available_items):
     # Sort the items before displaying
     sorted_items = sort_available_items(available_items)
 
+    # Limit the number of items to prevent extremely long messages
+    MAX_ITEMS_TO_SHOW = 50
+    items_to_show = sorted_items[:MAX_ITEMS_TO_SHOW]
+    remaining_count = len(sorted_items) - MAX_ITEMS_TO_SHOW
+
     table_text = "\n**📋 CURRENTLY AVAILABLE**\n\n"
-    for item in sorted_items:
+    for item in items_to_show:
         table_text += f"✅ **{escape_markdown(item['model'])}** @ {escape_markdown(item['store'])} - {escape_markdown(item['city'])} *({escape_markdown(item['zipCode'])})* - *{escape_markdown(item['distance'])} mi* - [Buy Now]({item['buy_url']})\n"
+
+    # Add note if there are more items
+    if remaining_count > 0:
+        table_text += f"\n*\\+{remaining_count} more locations available\\.\\.\\.*"
 
     return table_text
 
@@ -300,10 +309,55 @@ def run(apple_url, bot_token, recipients, zip_code):
 
 
 def telegram_bot_sendtext(bot_message, bot_token, recipients):
-    for bot_chatID in recipients:
-        send_text = TELEGRAM_API_BASE_URL + bot_token + '/sendMessage?chat_id=' + bot_chatID + '&parse_mode=Markdown&disable_web_page_preview=true&text=' + bot_message
-        response = requests.get(send_text)
-        print(response.json())
+    MAX_MESSAGE_LENGTH = 4000  # Leave some buffer below the 4096 limit
+
+    # If message is short enough, send as normal
+    if len(bot_message) <= MAX_MESSAGE_LENGTH:
+        for bot_chatID in recipients:
+            send_text = TELEGRAM_API_BASE_URL + bot_token + '/sendMessage?chat_id=' + bot_chatID + '&parse_mode=Markdown&disable_web_page_preview=true&text=' + bot_message
+            response = requests.get(send_text)
+            print(response.json())
+        return
+
+    # Split long message into chunks
+    chunks = []
+    current_chunk = ""
+    lines = bot_message.split('\n')
+
+    for line in lines:
+        # If adding this line would exceed the limit, start a new chunk
+        if len(current_chunk) + len(line) + 1 > MAX_MESSAGE_LENGTH:
+            if current_chunk:
+                chunks.append(current_chunk)
+                current_chunk = line
+            else:
+                # Single line too long, truncate it
+                chunks.append(line[:MAX_MESSAGE_LENGTH])
+        else:
+            if current_chunk:
+                current_chunk += '\n' + line
+            else:
+                current_chunk = line
+
+    # Add the last chunk
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    # Send each chunk
+    for i, chunk in enumerate(chunks):
+        # Add chunk indicator for multi-part messages
+        if len(chunks) > 1:
+            chunk_header = f"**📱 iPhone Stock Alert ({i+1}/{len(chunks)})**\n\n"
+            chunk = chunk_header + chunk
+
+        for bot_chatID in recipients:
+            send_text = TELEGRAM_API_BASE_URL + bot_token + '/sendMessage?chat_id=' + bot_chatID + '&parse_mode=Markdown&disable_web_page_preview=true&text=' + chunk
+            response = requests.get(send_text)
+            print(response.json())
+
+            # Small delay between chunks to avoid rate limiting
+            if i < len(chunks) - 1:
+                time.sleep(0.5)
 
 
 def handler(event, context):
