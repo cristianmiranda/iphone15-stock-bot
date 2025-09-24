@@ -80,14 +80,33 @@ def escape_markdown(text):
         text = text.replace(char, f'\\{char}')
     return text
 
+def sort_available_items(available_items):
+    """
+    Sort available items by:
+    1. Distance (closer to furthest)
+    2. Phone size (smaller to larger screen)
+    3. Color (alphabetically)
+    """
+    def sort_key(item):
+        distance = float(item['distance'])
+        screen_size = float(item['screen_size'])
+        color = item['color']
+        return (distance, screen_size, color)
+
+    return sorted(available_items, key=sort_key)
+
+
 def generate_availability_table(available_items):
     """Generate a compact table of available iPhones with buy links"""
     if not available_items:
         return "\n**📋 CURRENTLY AVAILABLE**\n\n😔 *No iPhones currently in stock*"
 
+    # Sort the items before displaying
+    sorted_items = sort_available_items(available_items)
+
     table_text = "\n**📋 CURRENTLY AVAILABLE**\n\n"
-    for item in available_items:
-        table_text += f"✅ **{escape_markdown(item['model'])}** @ {escape_markdown(item['store'])} - {escape_markdown(item['city'])} *({escape_markdown(item['zipCode'])})* - *{escape_markdown(item['distance'])}* - [Buy Now]({item['buy_url']})\n"
+    for item in sorted_items:
+        table_text += f"✅ **{escape_markdown(item['model'])}** @ {escape_markdown(item['store'])} - {escape_markdown(item['city'])} *({escape_markdown(item['zipCode'])})* - *{escape_markdown(item['distance'])} mi* - [Buy Now]({item['buy_url']})\n"
 
     return table_text
 
@@ -208,6 +227,14 @@ def run(apple_url, bot_token, recipients, zip_code):
                 model_parts = model.split(' ')
                 storage = model_parts[4].lower()  # Extracting "1TB"
                 color = '-'.join(model_parts[5:]).lower()  # Converting "Natural Titanium" to "natural-titanium"
+
+                # Extract screen size from model name (e.g., "iPhone 17 Pro Max" -> "6.9" for Pro Max)
+                screen_size = "6.3"  # Default for regular Pro
+                if "Pro Max" in model:
+                    screen_size = "6.9"
+                elif "Pro" in model:
+                    screen_size = "6.3"
+
                 buy_url = f"{APPLE_BUY_BASE_URL}6.9-inch-display-{storage}-{color}-unlocked"
 
                 availability_icon = '🚫'
@@ -219,6 +246,9 @@ def run(apple_url, bot_token, recipients, zip_code):
                         'zipCode': zipCode,
                         'city': city,
                         'distance': distance_miles,
+                        'screen_size': float(screen_size),
+                        'color': color,
+                        'storage': storage,
                         'maps_link': google_maps_link,
                         'buy_url': buy_url
                     })
@@ -241,7 +271,10 @@ def run(apple_url, bot_token, recipients, zip_code):
                             'ID': model_store_key,
                             'availability': availability,
                             'city': city,
-                            'distance': Decimal(str(distance_miles))
+                            'distance': Decimal(str(distance_miles)),
+                            'screen_size': Decimal(str(screen_size)),
+                            'color': color,
+                            'storage': storage
                         }
                     )
 
