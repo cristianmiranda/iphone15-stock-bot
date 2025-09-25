@@ -78,36 +78,75 @@ Apple is now enforcing cookies and doesn't allow anonymous requests anymore. To 
 
 ## 🔧 Development & Deployment
 
-### Local Development with Docker Compose
+### Local Development
 
-To run the bot locally using Docker Compose:
+#### Prerequisites
+- Docker and Docker Compose installed
+- Valid Apple cookies (see [Getting Apple Cookies](#-getting-apple-cookies) section)
+- Telegram bot token and chat ID
 
-1. **Create a `.env` file** with your environment variables (use `.env.sample` as template)
+#### Quick Start
 
-2. **Build and run with Docker Compose**:
+1. **Clone the repository and create environment file**:
+   ```bash
+   git clone <repository-url>
+   cd iphone-stock-bot
+   cp .env.sample .env
+   ```
+
+2. **Configure your `.env` file** with your specific values:
+   - Set `TELEGRAM_BOT_TOKEN` with your bot token
+   - Set `TELEGRAM_CHAT_IDS` with your chat ID (in JSON array format: `["123456789"]`)
+   - Update `IPHONE_MODELS` with the model codes you want to monitor
+   - Update `ZIP_CODES` with your desired locations
+   - Other variables can use the default values for local testing
+
+3. **Run the bot with automatic cookie refresh**:
+   ```bash
+   ./run.sh 300  # Check every 5 minutes (300 seconds)
+   ```
+
+   This script will:
+   - Start a local DynamoDB instance
+   - Automatically refresh Apple cookies before each run
+   - Run the stock checker at your specified interval
+   - Handle cleanup when stopped with Ctrl+C
+
+#### Manual Docker Compose Commands
+
+For more control, you can run Docker Compose commands manually:
+
+1. **One-time run**:
    ```bash
    docker compose up --build
    ```
 
-3. **Run in detached mode** (background):
+2. **Run in background**:
    ```bash
    docker compose up -d --build
    ```
 
-4. **For debugging, run interactively**:
+3. **Interactive debugging**:
    ```bash
-   docker compose run --rm app /bin/bash
+   docker compose run --rm iphone-stock-bot /bin/bash
    ```
 
-5. **View logs**:
+4. **View logs**:
    ```bash
    docker compose logs -f
    ```
 
-6. **Stop the service**:
+5. **Stop services**:
    ```bash
    docker compose down
    ```
+
+#### Local Development Notes
+
+- The local setup uses a DynamoDB container instead of AWS DynamoDB
+- The `local_runner.py` script automatically creates the required DynamoDB table
+- Cookies expire approximately every 2 hours, so the `run.sh` script refreshes them automatically
+- All notifications will be sent to your configured Telegram chat
 
 ### Automated Deployment (GitHub Actions)
 

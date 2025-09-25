@@ -151,6 +151,10 @@ COOKIE_HEADER=$(sqlite3 -readonly "$DB" -separator $'\t' "$HEADER_QUERY" \
 echo "=== Cookie: header para https://$TARGET_HOST/ ==="
 if [[ -n "$COOKIE_HEADER" ]]; then
   echo "Cookie: $COOKIE_HEADER"
+  # Write just the cookie string to .cookies file (remove trailing semicolon and space)
+  CLEAN_COOKIES="${COOKIE_HEADER%%; }"
+  echo "$CLEAN_COOKIES" > .cookies
+  echo "=== Cookies guardadas en .cookies ==="
 else
   echo "(no se encontraron cookies aplicables)"
 fi

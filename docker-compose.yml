@@ -9,7 +9,9 @@ services:
       - dynamodb
     volumes:
       - .:/app
+      - ./.cookies:/app/.cookies:ro
     working_dir: /app
+    restart: "no"
     command: >
       bash -c "
         pip install -r requirements.txt &&
@@ -19,7 +21,7 @@ services:
   dynamodb:
     image: amazon/dynamodb-local:latest
     ports:
-      - "8001:8000"
+      - "8021:8000"
     command: ["-jar", "DynamoDBLocal.jar", "-sharedDb"]
 
 volumes:

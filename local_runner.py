@@ -53,3 +53,7 @@ if __name__ == "__main__":
     # Run the Lambda handler
     result = handler({}, {})
     print(f"Handler result: {result}")
+
+    # Explicit exit to ensure container terminates
+    import sys
+    sys.exit(0)

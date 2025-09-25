@@ -120,23 +120,41 @@ def generate_availability_table(available_items):
     return table_text
 
 
+def parse_cookies_to_session(cookie_string, session):
+    """Parse cookie string and add cookies to session"""
+    for cookie_pair in cookie_string.split('; '):
+        if '=' in cookie_pair:
+            name, value = cookie_pair.split('=', 1)
+            session.cookies.set(name, value, domain='.apple.com')
+
+
 def get_apple_cookies():
-    """Get cookies from environment variable"""
+    """Get cookies from environment variable or .cookies file"""
     session = requests.Session()
 
-    # Get cookies from environment variable
+    # Priority 1: Get cookies from environment variable
     manual_cookies = os.getenv('APPLE_COOKIES')
     if manual_cookies:
         print("Using manually configured cookies from environment")
-        # Parse the cookie string and add to session
-        for cookie_pair in manual_cookies.split('; '):
-            if '=' in cookie_pair:
-                name, value = cookie_pair.split('=', 1)
-                session.cookies.set(name, value, domain='.apple.com')
+        parse_cookies_to_session(manual_cookies, session)
         return session
-    else:
-        print("❌ No APPLE_COOKIES environment variable found!")
-        return None
+
+    # Priority 2: Try to read from .cookies file
+    try:
+        with open('.cookies', 'r') as f:
+            file_cookies = f.read().strip()
+            if file_cookies:
+                print("Using cookies from .cookies file")
+                parse_cookies_to_session(file_cookies, session)
+                return session
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        print(f"Error reading .cookies file: {e}")
+
+    # Priority 3: No cookies found
+    print("❌ No APPLE_COOKIES environment variable found!")
+    return None
 
 
 def run(apple_url, bot_token, recipients, zip_code):
